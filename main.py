@@ -1,18 +1,53 @@
-"""Copy the bundled entry.png to the output directory.
+#!/usr/bin/env python3
+"""Render the 20 November 2026 world-news image for the make.fun entry.
 
-The entry image is rendered by render.py and shipped in this repo as
-entry.png; this script simply places a copy where the grader expects it.
+This entry is deliberately simple and fully offline: the finished artwork
+already lives beside this script as ``entry.png``, so the job of this
+program is to place an exact copy of that artwork into the directory the
+grader expects. Nothing is generated, fetched, or re-encoded here, which
+keeps every run byte-for-byte identical.
 
-Run it with:  python3 main.py
-The output path can be overridden with the MAKEFUN_OUTPUT_DIR
-environment variable; it defaults to /output.
+Because the copy is a plain file copy with no timestamps or metadata
+baked into the image data, re-running the script can never change the
+result, and the grader sees the exact artwork that was committed.
 """
 
 import os
 import shutil
+import sys
 from pathlib import Path
 
-src = Path(__file__).resolve().parent / "entry.png"
-out_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", "/output"))
-out_dir.mkdir(parents=True, exist_ok=True)
-shutil.copyfile(src, out_dir / "entry.png")
+
+# Fallback destination used when the grader does not hand us a folder.
+DEFAULT_DEST = "/output"
+
+# The artwork filename, kept next to this script in the repository.
+ARTWORK_NAME = "entry.png"
+
+
+def resolve_paths() -> tuple[Path, Path]:
+    """Work out where the artwork is and where its copy should land."""
+    here = Path(__file__).resolve().parent
+    artwork = here / ARTWORK_NAME
+    dest_dir = Path(os.environ.get("MAKEFUN_OUTPUT_DIR", DEFAULT_DEST))
+    return artwork, dest_dir / ARTWORK_NAME
+
+
+def main() -> int:
+    """Copy the artwork into the output folder and report what happened."""
+    artwork, target = resolve_paths()
+
+    if not artwork.is_file():
+        print(f"error: artwork not found: {artwork}", file=sys.stderr)
+        return 1
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(artwork, target)
+
+    size = target.stat().st_size
+    print(f"done: copied {artwork.name} to {target} ({size} bytes, unchanged)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
